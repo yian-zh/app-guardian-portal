@@ -1,12 +1,22 @@
 import axios from 'axios'
+import axiosRetry from 'axios-retry'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-finals-fsjkg.ondigitalocean.app/api'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+  },
+})
+
+axiosRetry(api, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNABORTED'
   },
 })
 

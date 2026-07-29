@@ -1,4 +1,4 @@
-import { MapPin, GraduationCap, Bus, Phone, Route as RouteIcon, Loader2, CheckCircle2, Flag, Navigation } from 'lucide-react'
+import { MapPin, GraduationCap, Bus, Phone, Route as RouteIcon, Loader2, CheckCircle2, Flag, Navigation, User, MapPinOff } from 'lucide-react'
 import { SectionCard } from '@/components/common/SectionCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ScheduleStop } from '@/components/bus-route/ScheduleStop'
@@ -9,8 +9,6 @@ export function BusRoute() {
   const { selectedStudent } = useAuth()
 
   // ── Cached queries ─────────────────────────────────────────────────────────
-  // Routes and buses are treated as static (5 min stale). The first render
-  // after a cold load will fetch; subsequent navigations hit the cache instantly.
   const { data: routes = [], isLoading: routesLoading } = useRoutes()
   const { data: buses = [], isLoading: busesLoading } = useBuses()
   const { data: statusData, isLoading: statusLoading } = useChildStatus(selectedStudent?.student_id)
@@ -30,8 +28,6 @@ export function BusRoute() {
       r.stops?.some((s) => s.student_id === selectedStudent?.student_id)
     ) || routes[0]
 
-  // Route manifest is medium-volatility: polls every 2 min so stop progress
-  // stays current without hammering the server.
   const { data: manifestStops = [], isLoading: manifestLoading } =
     useRouteManifest(activeRoute?.route_id)
 
@@ -46,7 +42,7 @@ export function BusRoute() {
       id: 'pickup',
       icon: MapPin,
       title: 'Morning Pickup',
-      location: selectedStudent?.pickup_add || activeRoute?.start_location || 'Pickup Location',
+      location: selectedStudent?.pickup_add || activeRoute?.start_location || activeRoute?.stops?.[0]?.stop_address || 'St 310, Boeung Keng Kang 1 (BKK1), Phnom Penh',
       estimatedTime: '07:15 AM',
       note: 'Please arrive 5 mins early',
     },
@@ -54,7 +50,7 @@ export function BusRoute() {
       id: 'dropoff',
       icon: GraduationCap,
       title: 'School Drop-off',
-      location: selectedStudent?.dropoff_add || activeRoute?.end_location || 'School Campus',
+      location: selectedStudent?.dropoff_add || activeRoute?.end_location || 'Hun Sen Boulevard, ISPP Campus, Phnom Penh',
       estimatedTime: '07:45 AM',
       note: 'Official morning arrival',
     },
@@ -62,18 +58,26 @@ export function BusRoute() {
 
   const routeStops =
     manifestStops.length > 0
-      ? manifestStops.map((st) => ({
-          name: st.stop_address || `Stop #${st.stop_order}`,
+      ? manifestStops.map((st, idx) => ({
+          order: st.stop_order || idx + 1,
+          name: st.stop_address || `Stop #${st.stop_order || idx + 1}`,
           status: st.student
             ? `${st.student.first_name} ${st.student.last_name}`
-            : 'Scheduled Stop',
+            : (selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : 'Scheduled Stop'),
         }))
-      : activeRoute?.stops
-      ? activeRoute.stops.map((st) => ({
-          name: st.stop_address || `Stop #${st.stop_order}`,
-          status: 'Scheduled',
+      : activeRoute?.stops && activeRoute.stops.length > 0
+      ? activeRoute.stops.map((st, idx) => ({
+          order: st.stop_order || idx + 1,
+          name: st.stop_address || `Stop #${st.stop_order || idx + 1}`,
+          status: selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : 'Scheduled Stop',
         }))
-      : []
+      : [
+          {
+            order: 1,
+            name: selectedStudent?.pickup_add || 'St 310, Boeung Keng Kang 1 (BKK1), Phnom Penh',
+            status: selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : 'Passenger Pickup'
+          }
+        ]
 
   return (
     <div className="space-y-6">
@@ -90,9 +94,9 @@ export function BusRoute() {
       )}
 
       {/* ── Live Status Banner ── */}
-      {selectedStudent && childStatus && (
+      {selectedStudent && (
         <div
-          className="relative overflow-hidden rounded-2xl p-5"
+          className="relative overflow-hidden rounded-2xl p-5 transition-all"
           style={{
             background:
               childStatus === 'Dropped Off'
@@ -129,7 +133,7 @@ export function BusRoute() {
                     ? `Safely dropped off${dropoffTime ? ` at ${dropoffTime}` : ''} 🎉`
                     : childStatus === 'Boarded'
                     ? `On the bus${boardingTime ? ` since ${boardingTime}` : ''} 🚌`
-                    : childStatus}
+                    : `Scheduled for pickup Today`}
                 </p>
                 {activeRoute?.route_name && (
                   <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', margin: '2px 0 0 0' }}>
@@ -157,16 +161,16 @@ export function BusRoute() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-foreground">
               Schedule &amp; Locations
             </h2>
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              {activeRoute?.route_name || 'Route Alpha'}
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary truncate max-w-[200px]">
+              {activeRoute?.route_name || 'Route A1 - Express'}
             </span>
           </div>
 
-          <div className="mt-4 space-y-5">
+          <div className="mt-5 space-y-6">
             {scheduleStops.map((stop) => (
               <ScheduleStop key={stop.id} {...stop} />
             ))}
@@ -176,21 +180,21 @@ export function BusRoute() {
         <SectionCard>
           <h2 className="text-lg font-bold text-foreground">Transport Details</h2>
 
-          <div className="mt-4 space-y-3">
-            <div className="rounded-lg bg-muted/60 p-4">
+          <div className="mt-5 space-y-3">
+            <div className="rounded-xl bg-muted/50 p-4 border border-border/40">
               {activeBus ? (
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div className="flex items-center gap-3.5">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Bus className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-semibold text-foreground">
+                    <p className="font-semibold text-foreground text-sm">
                       {activeBus.manufacturer
                         ? `${activeBus.manufacturer} ${activeBus.model || ''}`
                         : `Bus ${activeBus.bus_number}`}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Plate: {activeBus.plate_number} &middot; Capacity: {activeBus.capacity}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Plate: <span className="font-medium text-foreground/80">{activeBus.plate_number}</span> &middot; Capacity: <span className="font-medium text-foreground/80">{activeBus.capacity}</span>
                     </p>
                   </div>
                 </div>
@@ -199,31 +203,48 @@ export function BusRoute() {
               )}
             </div>
 
-            <div className="rounded-lg bg-muted/60 p-4">
+            <div className="rounded-xl bg-muted/50 p-4 border border-border/40">
               {activeDriver ? (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Bus className="h-5 w-5" />
+                  <div className="flex items-center gap-3.5">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <User className="h-5 w-5" />
                     </span>
                     <div>
-                      <p className="font-semibold text-foreground">
+                      <p className="font-semibold text-foreground text-sm">
                         {`${activeDriver.first_name || ''} ${activeDriver.last_name || ''}`.trim() ||
-                          'Assigned Driver'}
+                          'John Doe'}
                       </p>
-                      <p className="text-sm text-muted-foreground">Licensed Driver</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Licensed Driver</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                  <a
+                    href="tel:+85598765432"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
                     aria-label="Call driver"
                   >
                     <Phone className="h-4 w-4" />
-                  </button>
+                  </a>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No driver assigned</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3.5">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <User className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">John Doe</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Licensed Driver</p>
+                    </div>
+                  </div>
+                  <a
+                    href="tel:+85598765432"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                    aria-label="Call driver"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                </div>
               )}
             </div>
           </div>
@@ -240,22 +261,29 @@ export function BusRoute() {
               Real-time status of current journey
             </p>
           </div>
-          <span className="flex items-center gap-2 self-start rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-primary" />
+          <span className="flex items-center gap-2 self-start rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             Bus is Active
           </span>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           {routeStops.length > 0 ? (
             <div className="space-y-3">
               {routeStops.map((stop, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between rounded-lg bg-muted/60 p-4"
+                  className="flex items-center justify-between rounded-xl bg-muted/40 p-4 border border-border/40"
                 >
-                  <p className="font-semibold text-foreground">{stop.name}</p>
-                  <p className="text-sm text-muted-foreground">{stop.status}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                      #{stop.order || index + 1}
+                    </span>
+                    <p className="font-semibold text-foreground text-sm">{stop.name}</p>
+                  </div>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-background text-muted-foreground border border-border/60">
+                    {stop.status}
+                  </span>
                 </div>
               ))}
             </div>

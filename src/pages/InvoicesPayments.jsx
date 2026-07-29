@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { ChevronRight, Receipt, Loader2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Receipt, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SectionCard } from '@/components/common/SectionCard'
@@ -8,10 +8,12 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useBillingLedger, usePayInvoice } from '@/hooks/useApi'
+import { usePagination } from '@/hooks/usePagination'
 
 const TABS = [
-  { key: 'unpaid', label: 'Unpaid Invoices' },
-  { key: 'paid', label: 'Paid Invoices' },
+  { key: '', label: 'All Invoices' },
+  { key: 'Unpaid', label: 'Unpaid Invoices' },
+  { key: 'Paid', label: 'Paid Invoices' },
 ]
 
 const STATUS_TONE = {
@@ -224,22 +226,29 @@ function PaymentModal({ invoice, open, onClose, onSuccess }) {
 export function InvoicesPayments() {
   const { user } = useAuth()
   const guardianId = user?.guardian?.guardian_id || user?.user_id || user?.id
-  const { data: ledgerData, isLoading, isError } = useBillingLedger(guardianId)
+  const { page, perPage, goToPage, goNext, goPrev } = usePagination({ perPage: 25 })
 
   const [activeTab, setActiveTab] = useState(TABS[0].key)
   const [detailInvoice, setDetailInvoice] = useState(null)
   const [payInvoice, setPayInvoice] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
 
-  const invoices = useMemo(() => ledgerData?.invoices ?? [], [ledgerData])
+  const statusFilter = activeTab || undefined
 
-  const filteredInvoices = useMemo(() => {
-    if (activeTab === 'unpaid') return invoices.filter((inv) => inv.status === 'Unpaid')
-    return invoices.filter((inv) => inv.status === 'Paid')
-  }, [invoices, activeTab])
+  const { data: ledgerData, isLoading, isError } = useBillingLedger(guardianId, {
+    page,
+    perPage,
+    status: statusFilter,
+  })
 
+  const invoices = useMemo(() => {
+    if (Array.isArray(ledgerData?.invoices)) return ledgerData.invoices
+    if (Array.isArray(ledgerData?.invoices?.data)) return ledgerData.invoices.data
+    return []
+  }, [ledgerData])
   const totalDue = ledgerData?.total_due ?? 0
   const totalPaid = ledgerData?.total_paid ?? 0
+  const totalPages = ledgerData?.invoices?.last_page ?? ledgerData?.last_page ?? ledgerData?.meta?.last_page ?? 1
 
   const handlePayClick = useCallback((invoice) => {
     setDetailInvoice(null)
@@ -251,6 +260,11 @@ export function InvoicesPayments() {
     setSuccessMessage('Payment recorded successfully.')
     setTimeout(() => setSuccessMessage(''), 4000)
   }, [])
+
+  const handleTabChange = useCallback((key) => {
+    setActiveTab(key)
+    goToPage(1)
+  }, [goToPage])
 
   return (
     <div className="space-y-6">
@@ -286,15 +300,12 @@ export function InvoicesPayments() {
       <div className="border-b border-border">
         <div className="flex gap-6">
           {TABS.map(({ key, label }) => {
-            const count = invoices.filter((inv) =>
-              key === 'unpaid' ? inv.status === 'Unpaid' : inv.status === 'Paid'
-            ).length
             const isActive = activeTab === key
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() => setActiveTab(key)}
+                onClick={() => handleTabChange(key)}
                 className={cn(
                   'flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
                   isActive
@@ -303,11 +314,6 @@ export function InvoicesPayments() {
                 )}
               >
                 {label}
-                {count > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                    {count}
-                  </span>
-                )}
               </button>
             )
           })}
@@ -319,7 +325,7 @@ export function InvoicesPayments() {
           <h2 className="text-lg font-bold text-foreground">Invoices</h2>
         </div>
 
-        <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -337,8 +343,8 @@ export function InvoicesPayments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.length > 0 ? (
-                  filteredInvoices.map((inv) => (
+                {invoices.length > 0 ? (
+                  invoices.map((inv) => (
                     <tr key={inv.invoice_id} className="border-b border-border last:border-none">
                       <td className="px-6 py-4 font-medium text-foreground">#{inv.invoice_id}</td>
                       <td className="px-6 py-4 text-foreground">{inv.invoice_date}</td>
@@ -370,7 +376,7 @@ export function InvoicesPayments() {
                     <td colSpan={6}>
                       <EmptyState
                         icon={Receipt}
-                        title={activeTab === 'unpaid' ? 'No unpaid invoices' : 'No paid invoices'}
+                        title={activeTab ? `No ${activeTab.toLowerCase()} invoices` : 'No invoices'}
                         description="Billing records will appear here once available."
                       />
                     </td>
@@ -380,6 +386,22 @@ export function InvoicesPayments() {
             </table>
           )}
         </div>
+
+        {invoices.length > 0 && (
+          <div className="flex items-center justify-between border-t border-border px-6 py-4">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={goPrev} disabled={page <= 1}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={goNext} disabled={page >= totalPages}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       <InvoiceDetailModal

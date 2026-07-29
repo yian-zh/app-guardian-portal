@@ -1,9 +1,11 @@
 import { api } from './api'
 
 export const billingService = {
-  async getLedger(guardianId) {
+  async getLedger(guardianId, { page = 1, perPage = 50, status } = {}) {
     if (!guardianId) return null
-    const response = await api.get(`/billing/guardians/${guardianId}/ledger`)
+    const params = { page, per_page: perPage }
+    if (status) params.status = status
+    const response = await api.get(`/billing/guardians/${guardianId}/ledger`, { params })
     return response.data
   },
 

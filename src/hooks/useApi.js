@@ -2,20 +2,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { routeService } from '@/services/routeService'
 import { studentService } from '@/services/studentService'
 import { billingService } from '@/services/billingService'
-import { fetchAllPages } from '@/services/pagination'
 
-export function useStudents() {
+export function useStudents(guardianId, options = {}) {
   return useQuery({
-    queryKey: ['students'],
-    queryFn: () => fetchAllPages((params) => studentService.getStudents(params)),
+    queryKey: ['students', guardianId],
+    queryFn: async () => {
+      const res = await studentService.getStudents({ guardianId, perPage: 100 })
+      if (Array.isArray(res)) return res
+      return res.data ?? []
+    },
     staleTime: 1000 * 60 * 5,
+    ...options,
   })
 }
 
 export function useRoutes() {
   return useQuery({
     queryKey: ['routes'],
-    queryFn: () => fetchAllPages((params) => routeService.getRoutes(params)),
+    queryFn: async () => {
+      const envelope = await routeService.getRoutes({ perPage: 500 })
+      return envelope.data ?? []
+    },
     staleTime: 1000 * 60 * 5,
   })
 }
@@ -23,7 +30,10 @@ export function useRoutes() {
 export function useBuses() {
   return useQuery({
     queryKey: ['buses'],
-    queryFn: () => fetchAllPages((params) => routeService.getBuses(params)),
+    queryFn: async () => {
+      const envelope = await routeService.getBuses({ perPage: 500 })
+      return envelope.data ?? []
+    },
     staleTime: 1000 * 60 * 5,
   })
 }
@@ -31,11 +41,10 @@ export function useBuses() {
 export function useRouteManifest(routeId) {
   return useQuery({
     queryKey: ['routeManifest', routeId],
-    queryFn: () =>
-      fetchAllPages(
-        (params) => routeService.getRouteManifest(routeId, params),
-        { perPage: 200 }
-      ),
+    queryFn: async () => {
+      const envelope = await routeService.getRouteManifest(routeId, { perPage: 500 })
+      return envelope.data ?? []
+    },
     enabled: !!routeId,
     staleTime: 1000 * 60 * 2,
     refetchInterval: 1000 * 60 * 2,
@@ -54,10 +63,10 @@ export function useChildStatus(studentId) {
   })
 }
 
-export function useBillingLedger(guardianId) {
+export function useBillingLedger(guardianId, { page = 1, perPage = 50, status } = {}) {
   return useQuery({
-    queryKey: ['billingLedger', guardianId],
-    queryFn: () => billingService.getLedger(guardianId),
+    queryKey: ['billingLedger', guardianId, { page, perPage, status }],
+    queryFn: () => billingService.getLedger(guardianId, { page, perPage, status }),
     enabled: !!guardianId,
     staleTime: 1000 * 60 * 5,
   })

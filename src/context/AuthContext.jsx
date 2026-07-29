@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authService } from '@/services/authService'
-import { studentService } from '@/services/studentService'
-import { fetchAllPages } from '@/services/pagination'
+import { useStudents } from '@/hooks/useApi'
 
 const AuthContext = createContext(null)
 
@@ -15,27 +14,25 @@ export function AuthProvider({ children }) {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const queryClient = useQueryClient()
 
+  const guardianId = user?.guardian?.guardian_id || user?.user_id || user?.id
+
   const {
     data: studentsData,
     isLoading: studentsLoading,
-  } = useQuery({
-    queryKey: ['students'],
-    queryFn: () => fetchAllPages((params) => studentService.getStudents(params)),
+  } = useStudents(guardianId, {
     enabled: !!(token && user),
-    staleTime: 1000 * 60 * 5,
-    select: (allStudents) => {
-      if (!user) return []
-      const matched = allStudents.filter((student) => {
-        if (!student.guardians || student.guardians.length === 0) return true
-        return student.guardians.some(
-          (g) => g.user_id === user.user_id || g.user?.user_id === user.user_id
-        )
-      })
-      return matched.length > 0 ? matched : allStudents
-    },
   })
 
-  const students = studentsData ?? []
+  const students = useMemo(() => {
+    if (!studentsData || !user) return []
+    const matched = studentsData.filter((student) => {
+      if (!student.guardians || student.guardians.length === 0) return true
+      return student.guardians.some(
+        (g) => g.user_id === user.user_id || g.user?.user_id === user.user_id
+      )
+    })
+    return matched.length > 0 ? matched : studentsData
+  }, [studentsData, user])
 
   useEffect(() => {
     if (students.length > 0 && !selectedStudent) {
@@ -56,7 +53,8 @@ export function AuthProvider({ children }) {
     setToken(authToken)
     setUser(loggedUser)
 
-    queryClient.invalidateQueries({ queryKey: ['students'] })
+    const newGuardianId = loggedUser?.user_id || loggedUser?.id
+    queryClient.invalidateQueries({ queryKey: ['students', newGuardianId] })
 
     return data
   }
