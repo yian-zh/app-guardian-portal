@@ -7,5 +7,5 @@ static_sites:
     catchall_document: index.html
     envs:
       - key: VITE_API_BASE_URL
-        value: ${backend-api.PUBLIC_URL}/api
+        value: https://api-finals-fsjkg.ondigitalocean.app/api
         scope: RUN_AND_BUILD
