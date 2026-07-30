@@ -21,14 +21,16 @@ function extractData(res) {
   return []
 }
 
-export function useRoutes(studentId) {
+export function useRoutes(studentId, options = {}) {
   return useQuery({
-    queryKey: ['routes', studentId],
+    queryKey: ['routes', studentId || 'all'],
     queryFn: async () => {
       const res = await routeService.getRoutes({ studentId, perPage: 500 })
       return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
+    enabled: studentId !== undefined ? !!studentId : true,
+    ...options,
   })
 }
 

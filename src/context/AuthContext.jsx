@@ -25,13 +25,14 @@ export function AuthProvider({ children }) {
 
   const students = useMemo(() => {
     if (!studentsData || !user) return []
-    const matched = studentsData.filter((student) => {
-      if (!student.guardians || student.guardians.length === 0) return true
+    return studentsData.filter((student) => {
+      if (!student.guardians || student.guardians.length === 0) return false
       return student.guardians.some(
-        (g) => g.user_id === user.user_id || g.user?.user_id === user.user_id
+        (g) => String(g.user_id) === String(user.user_id) ||
+               String(g.user?.user_id) === String(user.user_id) ||
+               String(g.guardian_id) === String(user?.guardian?.guardian_id)
       )
     })
-    return matched.length > 0 ? matched : studentsData
   }, [studentsData, user])
 
   useEffect(() => {

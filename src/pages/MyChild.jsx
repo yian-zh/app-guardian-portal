@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -26,7 +27,23 @@ export function MyChild() {
   const { selectedStudent, user } = useAuth()
   const { data: routes = [] } = useRoutes(selectedStudent?.student_id)
 
-  const activeRoute = routes.find(r => r.stops?.some(s => s.student_id === selectedStudent?.student_id)) || routes[0]
+  const studentRouteId = selectedStudent?.stops?.[0]?.route_id || selectedStudent?.stops?.[0]?.pivot?.route_id
+
+  const activeRoute = useMemo(() => {
+    if (!routes || routes.length === 0) return null
+    if (studentRouteId) {
+      const foundByRouteId = routes.find((r) => String(r.route_id) === String(studentRouteId))
+      if (foundByRouteId) return foundByRouteId
+    }
+    if (selectedStudent?.student_id) {
+      const foundByStudentId = routes.find((r) =>
+        r.stops?.some((s) => String(s.student_id) === String(selectedStudent.student_id)) ||
+        r.students?.some((st) => String(st.student_id) === String(selectedStudent.student_id))
+      )
+      if (foundByStudentId) return foundByStudentId
+    }
+    return routes[0]
+  }, [routes, selectedStudent, studentRouteId])
   const activeDriver = activeRoute?.driver
 
   const childName = selectedStudent

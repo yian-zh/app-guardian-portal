@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { MapPin, GraduationCap, Bus, Phone, Mail, Route as RouteIcon, Loader2, CheckCircle2, Flag, Navigation, User } from 'lucide-react'
 import { SectionCard } from '@/components/common/SectionCard'
@@ -24,11 +24,23 @@ export function BusRoute() {
     ? new Date(attendance.drop_off_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null
 
-  // Determine which route belongs to this student (or fall back to the first)
-  const activeRoute =
-    routes.find((r) =>
-      r.stops?.some((s) => s.student_id === selectedStudent?.student_id)
-    ) || routes[0]
+  const studentRouteId = selectedStudent?.stops?.[0]?.route_id || selectedStudent?.stops?.[0]?.pivot?.route_id
+
+  const activeRoute = useMemo(() => {
+    if (!routes || routes.length === 0) return null
+    if (studentRouteId) {
+      const foundByRouteId = routes.find((r) => String(r.route_id) === String(studentRouteId))
+      if (foundByRouteId) return foundByRouteId
+    }
+    if (selectedStudent?.student_id) {
+      const foundByStudentId = routes.find((r) =>
+        r.stops?.some((s) => String(s.student_id) === String(selectedStudent.student_id)) ||
+        r.students?.some((st) => String(st.student_id) === String(selectedStudent.student_id))
+      )
+      if (foundByStudentId) return foundByStudentId
+    }
+    return routes[0]
+  }, [routes, selectedStudent, studentRouteId])
 
   const { data: manifestStops = [], isLoading: manifestLoading } =
     useRouteManifest(activeRoute?.route_id)
