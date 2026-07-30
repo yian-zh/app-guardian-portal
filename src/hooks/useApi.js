@@ -7,7 +7,7 @@ export function useStudents(guardianId, options = {}) {
   return useQuery({
     queryKey: ['students', guardianId],
     queryFn: async () => {
-      const res = await studentService.getStudents({ guardianId, perPage: 50 })
+      const res = await studentService.getStudents({ guardianId })
       return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
@@ -25,10 +25,11 @@ export function useRoutes(studentId, options = {}) {
   return useQuery({
     queryKey: ['routes', studentId || 'all'],
     queryFn: async () => {
-      const res = await routeService.getRoutes({ studentId, perPage: 50 })
+      const res = await routeService.getRoutes({ studentId })
       return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
+    enabled: options.enabled !== undefined ? options.enabled : Boolean(studentId),
     ...options,
   })
 }
@@ -37,7 +38,7 @@ export function useBuses() {
   return useQuery({
     queryKey: ['buses'],
     queryFn: async () => {
-      const res = await routeService.getBuses({ perPage: 50 })
+      const res = await routeService.getBuses()
       return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
@@ -48,7 +49,7 @@ export function useRouteManifest(routeId) {
   return useQuery({
     queryKey: ['routeManifest', routeId],
     queryFn: async () => {
-      const res = await routeService.getRouteManifest(routeId, { perPage: 50 })
+      const res = await routeService.getRouteManifest(routeId)
       return extractData(res)
     },
     enabled: !!routeId,
