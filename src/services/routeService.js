@@ -1,8 +1,10 @@
 import { api } from './api'
 
 export const routeService = {
-  async getRoutes({ page = 1, perPage = 100 } = {}) {
-    const response = await api.get('/routes', { params: { page, per_page: perPage } })
+  async getRoutes({ page = 1, perPage = 100, studentId } = {}) {
+    const params = { page, per_page: perPage }
+    if (studentId) params.student_id = studentId
+    const response = await api.get('/routes', { params })
     return response.data
   },
 

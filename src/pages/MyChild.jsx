@@ -24,7 +24,7 @@ import { useRoutes } from '@/hooks/useApi'
 
 export function MyChild() {
   const { selectedStudent, user } = useAuth()
-  const { data: routes = [] } = useRoutes()
+  const { data: routes = [] } = useRoutes(selectedStudent?.student_id)
 
   const activeRoute = routes.find(r => r.stops?.some(s => s.student_id === selectedStudent?.student_id)) || routes[0]
   const activeDriver = activeRoute?.driver

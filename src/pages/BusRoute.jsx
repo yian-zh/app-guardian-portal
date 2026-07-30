@@ -11,7 +11,7 @@ export function BusRoute() {
   const { selectedStudent } = useAuth()
 
   // ── Cached queries ─────────────────────────────────────────────────────────
-  const { data: routes = [], isLoading: routesLoading } = useRoutes()
+  const { data: routes = [], isLoading: routesLoading } = useRoutes(selectedStudent?.student_id)
   const { data: buses = [], isLoading: busesLoading } = useBuses()
   const { data: statusData, isLoading: statusLoading } = useChildStatus(selectedStudent?.student_id)
 

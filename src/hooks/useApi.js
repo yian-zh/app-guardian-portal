@@ -21,11 +21,11 @@ function extractData(res) {
   return []
 }
 
-export function useRoutes() {
+export function useRoutes(studentId) {
   return useQuery({
-    queryKey: ['routes'],
+    queryKey: ['routes', studentId],
     queryFn: async () => {
-      const res = await routeService.getRoutes({ perPage: 500 })
+      const res = await routeService.getRoutes({ studentId, perPage: 500 })
       return extractData(res)
     },
     staleTime: 1000 * 60 * 5,

@@ -37,7 +37,7 @@ export function Dashboard() {
   )
 
   // ── Route + bus data (5 min cache)
-  const { data: routes = [], isLoading: routesLoading } = useRoutes()
+  const { data: routes = [], isLoading: routesLoading } = useRoutes(selectedStudent?.student_id)
   const { data: buses = [], isLoading: busesLoading } = useBuses()
 
   const isLoading = statusLoading || routesLoading || busesLoading
