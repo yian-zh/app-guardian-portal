@@ -8,6 +8,7 @@ import {
   Building2,
   Share2,
   Phone,
+  Mail,
   Bus,
   User,
   HeartPulse,
@@ -19,9 +20,14 @@ import { InfoTile } from '@/components/my-child/InfoTile'
 import { GuardianContactRow } from '@/components/my-child/GuardianContactRow'
 import { ROUTES } from '@/routes/paths'
 import { useAuth } from '@/context/AuthContext'
+import { useRoutes } from '@/hooks/useApi'
 
 export function MyChild() {
   const { selectedStudent, user } = useAuth()
+  const { data: routes = [] } = useRoutes()
+
+  const activeRoute = routes.find(r => r.stops?.some(s => s.student_id === selectedStudent?.student_id)) || routes[0]
+  const activeDriver = activeRoute?.driver
 
   const childName = selectedStudent
     ? `${selectedStudent.first_name || ''} ${selectedStudent.last_name || ''}`.trim()
@@ -218,6 +224,9 @@ export function MyChild() {
                 { label: 'Enrollment Status', value: selectedStudent?.enrollment_status || 'Enrolled', highlight: true },
                 { label: 'Pickup Stop', value: selectedStudent?.pickup_add ? 'Assigned' : 'Not assigned' },
                 { label: 'Dropoff Stop', value: selectedStudent?.dropoff_add ? 'Assigned' : 'Not assigned' },
+                { label: 'Assigned Driver', value: activeDriver ? `${activeDriver.first_name || ''} ${activeDriver.last_name || ''}`.trim() : 'Not assigned' },
+                { label: 'Driver Phone', value: activeDriver?.phone_number || activeDriver?.phone || 'N/A' },
+                { label: 'Driver Email', value: activeDriver?.email || 'N/A' },
               ].map(({ label, value, highlight }) => (
                 <div
                   key={label}

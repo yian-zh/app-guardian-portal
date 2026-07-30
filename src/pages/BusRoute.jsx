@@ -1,4 +1,6 @@
-import { MapPin, GraduationCap, Bus, Phone, Route as RouteIcon, Loader2, CheckCircle2, Flag, Navigation, User, MapPinOff } from 'lucide-react'
+import { useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { MapPin, GraduationCap, Bus, Phone, Mail, Route as RouteIcon, Loader2, CheckCircle2, Flag, Navigation, User } from 'lucide-react'
 import { SectionCard } from '@/components/common/SectionCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ScheduleStop } from '@/components/bus-route/ScheduleStop'
@@ -78,6 +80,14 @@ export function BusRoute() {
             status: selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : 'Passenger Pickup'
           }
         ]
+
+  const scrollRef = useRef(null)
+  const virtualizer = useVirtualizer({
+    count: routeStops.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 64,
+    overscan: 5,
+  })
 
   return (
     <div className="space-y-6">
@@ -205,26 +215,40 @@ export function BusRoute() {
 
             <div className="rounded-xl bg-muted/50 p-4 border border-border/40">
               {activeDriver ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3.5">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <User className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">
-                        {`${activeDriver.first_name || ''} ${activeDriver.last_name || ''}`.trim() ||
-                          'John Doe'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Licensed Driver</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <User className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">
+                          {`${activeDriver.first_name || ''} ${activeDriver.last_name || ''}`.trim() ||
+                            'Licensed Driver'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Assigned Driver</p>
+                      </div>
+                    </div>
+                    {(activeDriver.phone_number || activeDriver.phone) && (
+                      <a
+                        href={`tel:${activeDriver.phone_number || activeDriver.phone}`}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                        aria-label="Call driver"
+                      >
+                        <Phone className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="pt-2.5 border-t border-border/40 space-y-1.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span>Phone: <strong className="text-foreground font-medium">{activeDriver.phone_number || activeDriver.phone || 'N/A'}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span>Email: <strong className="text-foreground font-medium">{activeDriver.email || 'N/A'}</strong></span>
                     </div>
                   </div>
-                  <a
-                    href="tel:+85598765432"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-                    aria-label="Call driver"
-                  >
-                    <Phone className="h-4 w-4" />
-                  </a>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
@@ -233,17 +257,10 @@ export function BusRoute() {
                       <User className="h-5 w-5" />
                     </span>
                     <div>
-                      <p className="font-semibold text-foreground text-sm">John Doe</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Licensed Driver</p>
+                      <p className="font-semibold text-foreground text-sm">No Driver Assigned</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Contact school transport for updates</p>
                     </div>
                   </div>
-                  <a
-                    href="tel:+85598765432"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-                    aria-label="Call driver"
-                  >
-                    <Phone className="h-4 w-4" />
-                  </a>
                 </div>
               )}
             </div>
@@ -267,25 +284,35 @@ export function BusRoute() {
           </span>
         </div>
 
-        <div className="mt-5">
+        <div ref={scrollRef} className="mt-5 overflow-auto" style={{ maxHeight: '600px' }}>
           {routeStops.length > 0 ? (
-            <div className="space-y-3">
-              {routeStops.map((stop, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-xl bg-muted/40 p-4 border border-border/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
-                      #{stop.order || index + 1}
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const stop = routeStops[virtualItem.index]
+                return (
+                  <div
+                    key={virtualItem.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                    className="flex items-center justify-between rounded-xl bg-muted/40 p-4 border border-border/40"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                        #{stop.order || virtualItem.index + 1}
+                      </span>
+                      <p className="font-semibold text-foreground text-sm">{stop.name}</p>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-background text-muted-foreground border border-border/60">
+                      {stop.status}
                     </span>
-                    <p className="font-semibold text-foreground text-sm">{stop.name}</p>
                   </div>
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-background text-muted-foreground border border-border/60">
-                    {stop.status}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <EmptyState

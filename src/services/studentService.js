@@ -13,4 +13,12 @@ export const studentService = {
     const response = await api.get(`/operations/students/${studentId}/status`)
     return response.data
   },
+
+  async getAttendanceHistory(studentId, { page = 1, perPage = 50, filter } = {}) {
+    if (!studentId) return { data: [], last_page: 1 }
+    const params = { page, per_page: perPage }
+    if (filter) params.filter = filter
+    const response = await api.get(`/operations/students/${studentId}/attendance`, { params })
+    return response.data
+  },
 }

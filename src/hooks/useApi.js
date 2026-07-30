@@ -8,20 +8,25 @@ export function useStudents(guardianId, options = {}) {
     queryKey: ['students', guardianId],
     queryFn: async () => {
       const res = await studentService.getStudents({ guardianId, perPage: 100 })
-      if (Array.isArray(res)) return res
-      return res.data ?? []
+      return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
     ...options,
   })
 }
 
+function extractData(res) {
+  if (Array.isArray(res)) return res
+  if (res?.data && Array.isArray(res.data)) return res.data
+  return []
+}
+
 export function useRoutes() {
   return useQuery({
     queryKey: ['routes'],
     queryFn: async () => {
-      const envelope = await routeService.getRoutes({ perPage: 500 })
-      return envelope.data ?? []
+      const res = await routeService.getRoutes({ perPage: 500 })
+      return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
   })
@@ -31,8 +36,8 @@ export function useBuses() {
   return useQuery({
     queryKey: ['buses'],
     queryFn: async () => {
-      const envelope = await routeService.getBuses({ perPage: 500 })
-      return envelope.data ?? []
+      const res = await routeService.getBuses({ perPage: 500 })
+      return extractData(res)
     },
     staleTime: 1000 * 60 * 5,
   })
@@ -42,13 +47,28 @@ export function useRouteManifest(routeId) {
   return useQuery({
     queryKey: ['routeManifest', routeId],
     queryFn: async () => {
-      const envelope = await routeService.getRouteManifest(routeId, { perPage: 500 })
-      return envelope.data ?? []
+      const res = await routeService.getRouteManifest(routeId, { perPage: 500 })
+      return extractData(res)
     },
     enabled: !!routeId,
     staleTime: 1000 * 60 * 2,
     refetchInterval: 1000 * 60 * 2,
     refetchOnWindowFocus: true,
+  })
+}
+
+export function useAttendanceHistory(studentId, { page = 1, perPage = 50, filter } = {}) {
+  return useQuery({
+    queryKey: ['attendanceHistory', studentId, { page, perPage, filter }],
+    queryFn: async () => {
+      const res = await studentService.getAttendanceHistory(studentId, { page, perPage, filter })
+      return {
+        records: extractData(res),
+        totalPages: res?.last_page ?? res?.meta?.last_page ?? 1,
+      }
+    },
+    enabled: !!studentId,
+    staleTime: 1000 * 60 * 2,
   })
 }
 

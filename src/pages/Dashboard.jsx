@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bus,
@@ -74,25 +75,28 @@ export function Dashboard() {
   })
 
   // Build recent activity feed from live data
-  const recentActivity = []
-  if (attendance?.boarding_time) {
-    recentActivity.push({
-      type: 'boarded',
-      title: `${childName || 'Student'} boarded the bus`,
-      description: activeRoute?.route_name || 'Assigned Route',
-      timestamp: boardingTime,
-      tone: 'success',
-    })
-  }
-  if (attendance?.drop_off_time) {
-    recentActivity.push({
-      type: 'dropoff',
-      title: `${childName || 'Student'} was safely dropped off`,
-      description: selectedStudent?.pickup_add || 'Drop-off location',
-      timestamp: dropoffTime,
-      tone: 'success',
-    })
-  }
+  const recentActivity = useMemo(() => {
+    const items = []
+    if (attendance?.boarding_time) {
+      items.push({
+        type: 'boarded',
+        title: `${childName || 'Student'} boarded the bus`,
+        description: activeRoute?.route_name || 'Assigned Route',
+        timestamp: boardingTime,
+        tone: 'success',
+      })
+    }
+    if (attendance?.drop_off_time) {
+      items.push({
+        type: 'dropoff',
+        title: `${childName || 'Student'} was safely dropped off`,
+        description: selectedStudent?.pickup_add || 'Drop-off location',
+        timestamp: dropoffTime,
+        tone: 'success',
+      })
+    }
+    return items
+  }, [attendance?.boarding_time, attendance?.drop_off_time, childName, activeRoute?.route_name, boardingTime, dropoffTime, selectedStudent?.pickup_add])
 
   const transportRows = [
     {
@@ -108,6 +112,14 @@ export function Dashboard() {
       value: activeDriver
         ? `${activeDriver.first_name || ''} ${activeDriver.last_name || ''}`.trim()
         : 'Not assigned',
+    },
+    {
+      label: 'Driver Phone',
+      value: activeDriver?.phone_number || activeDriver?.phone || 'N/A',
+    },
+    {
+      label: 'Driver Email',
+      value: activeDriver?.email || 'N/A',
     },
     {
       label: 'Bus Route',
