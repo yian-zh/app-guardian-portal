@@ -1,7 +1,11 @@
 import axios from 'axios'
 import axiosRetry from 'axios-retry'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-finals-fsjkg.ondigitalocean.app/api'
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api-final-albch.ondigitalocean.app/api'
+const API_BASE_URL = rawBaseUrl.endsWith('/api') 
+  ? rawBaseUrl 
+  : `${rawBaseUrl.replace(/\/$/, '')}/api`
+
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
