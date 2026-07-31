@@ -9,7 +9,7 @@ export const routeService = {
   },
 
   async getBuses() {
-    const response = await api.get('/buses', { params: { per_page: 'all' } })
+    const response = await api.get('/buses', { params: { per_page: 1 } })
     return response.data
   },
 
