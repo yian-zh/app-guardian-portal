@@ -68,6 +68,14 @@ export function AuthProvider({ children }) {
     setSelectedStudent(null)
   }
 
+  function updateUser(updatedData) {
+    setUser((prev) => {
+      const newUser = { ...prev, ...updatedData }
+      localStorage.setItem('guardian_user', JSON.stringify(newUser))
+      return newUser
+    })
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -80,6 +88,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}

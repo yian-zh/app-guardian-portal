@@ -21,4 +21,9 @@ export const authService = {
       localStorage.removeItem('guardian_user')
     }
   },
+
+  async updateProfile(userId, data) {
+    const response = await api.put(`/users/${userId}`, data)
+    return response.data
+  },
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Camera, ChevronRight, Info, Shield, User } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Camera, ChevronRight, Info, Shield, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import { SectionCard } from '@/components/common/SectionCard'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { useAuth } from '@/context/AuthContext'
+import { useUpdateProfile } from '@/hooks/useApi'
 
 const initialPreferences = [
   {
@@ -30,13 +31,29 @@ const initialPreferences = [
 ]
 
 export function Profile() {
-  const { user, students, setSelectedStudent } = useAuth()
+  const { user, students, setSelectedStudent, updateUser } = useAuth()
   const [preferences, setPreferences] = useState(initialPreferences)
 
-  const fullName = user
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Guardian User'
-    : 'Guardian User'
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [emergencyPhone, setEmergencyPhone] = useState('')
 
+  const [feedback, setFeedback] = useState(null)
+  const updateProfileMutation = useUpdateProfile()
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name || '')
+      setLastName(user.last_name || '')
+      setEmail(user.email || '')
+      setPhone(user.phone_number || '')
+      setEmergencyPhone(user.phone_number || '')
+    }
+  }, [user])
+
+  const fullName = `${firstName} ${lastName}`.trim() || user?.username || 'Guardian User'
   const guardianIdCode = user?.user_id ? `G-${String(user.user_id).padStart(4, '0')}` : 'G-0001'
 
   function togglePreference(key) {
@@ -47,8 +64,37 @@ export function Profile() {
     )
   }
 
+  async function handleSaveChanges(e) {
+    e?.preventDefault()
+    setFeedback(null)
+
+    const userId = user?.user_id || user?.id || user?.guardian?.user_id
+
+    if (!userId) {
+      setFeedback({ type: 'error', message: 'Unable to identify current guardian account ID.' })
+      return
+    }
+
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone_number: phone,
+    }
+
+    try {
+      await updateProfileMutation.mutateAsync({ userId, data: payload })
+      updateUser(payload)
+      setFeedback({ type: 'success', message: 'Profile updated successfully!' })
+    } catch (err) {
+      console.error('Failed to update profile:', err)
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to save changes. Please try again.'
+      setFeedback({ type: 'error', message: errorMsg })
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <form onSubmit={handleSaveChanges} className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
@@ -58,8 +104,34 @@ export function Profile() {
             Manage your guardian details and preferences.
           </p>
         </div>
-        <Button>Save Changes</Button>
+        <Button type="submit" disabled={updateProfileMutation.isPending}>
+          {updateProfileMutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </Button>
       </div>
+
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 rounded-lg p-4 text-sm font-medium ${
+            feedback.type === 'success'
+              ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+              : 'bg-destructive/10 text-destructive border border-destructive/20'
+          }`}
+        >
+          {feedback.type === 'success' ? (
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 shrink-0" />
+          )}
+          <span>{feedback.message}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -91,11 +163,21 @@ export function Profile() {
 
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="firstName">First Name</Label>
                 <Input
-                  id="fullName"
-                  defaultValue={fullName}
-                  placeholder="Not provided"
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
                 />
               </div>
               <div className="space-y-2">
@@ -103,8 +185,9 @@ export function Profile() {
                 <Input
                   id="email"
                   type="email"
-                  defaultValue={user?.email || ''}
-                  placeholder="Not provided"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email address"
                 />
               </div>
               <div className="space-y-2">
@@ -112,17 +195,19 @@ export function Profile() {
                 <Input
                   id="phone"
                   type="tel"
-                  defaultValue={user?.phone_number || ''}
-                  placeholder="Not provided"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter phone number"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="emergencyContact">Emergency Phone</Label>
                 <Input
                   id="emergencyContact"
                   type="tel"
-                  defaultValue={user?.phone_number || ''}
-                  placeholder="Not provided"
+                  value={emergencyPhone}
+                  onChange={(e) => setEmergencyPhone(e.target.value)}
+                  placeholder="Enter emergency phone number"
                 />
               </div>
             </div>
@@ -207,6 +292,7 @@ export function Profile() {
           </div>
         </div>
       </div>
-    </div>
+    </form>
   )
 }
+

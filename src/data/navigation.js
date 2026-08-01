@@ -4,7 +4,6 @@ import {
   History,
   Bus,
   Receipt,
-  Bell,
   User,
 } from 'lucide-react'
 import { ROUTES } from '@/routes/paths'
@@ -15,6 +14,5 @@ export const navItems = [
   { label: 'Attendance History', path: ROUTES.ATTENDANCE, icon: History },
   { label: 'Bus Route', path: ROUTES.BUS_ROUTE, icon: Bus },
   { label: 'Invoices & Payments', path: ROUTES.INVOICES, icon: Receipt },
-  { label: 'Notifications', path: ROUTES.NOTIFICATIONS, icon: Bell },
   { label: 'Profile', path: ROUTES.PROFILE, icon: User },
 ]

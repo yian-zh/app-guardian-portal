@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { routeService } from '@/services/routeService'
 import { studentService } from '@/services/studentService'
 import { billingService } from '@/services/billingService'
+import { authService } from '@/services/authService'
 
 export function useStudents(guardianId, options = {}) {
   return useQuery({
@@ -109,5 +110,11 @@ export function usePayInvoice(guardianId) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billingLedger', guardianId] })
     },
+  })
+}
+
+export function useUpdateProfile() {
+  return useMutation({
+    mutationFn: ({ userId, data }) => authService.updateProfile(userId, data),
   })
 }
